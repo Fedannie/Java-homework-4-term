@@ -6,22 +6,18 @@ import java.util.function.Supplier;
  * @param <T> type of result.
  */
 public class LazySimple<T> implements Lazy<T>{
-    /**
-     * Produces result.
-     */
-    private Supplier<T> supp = null;
+    /** Produces result. */
+    private Supplier<T> supplier = null;
 
-    /**
-     * result of supplier production
-     */
-    private T res = null;
+    /** Result of supplier production. */
+    private T result = null;
 
     /**Creates lazySimple implementation by supplier.
      *
      * @param supplier produces result.
      */
     public LazySimple(Supplier<T> supplier) {
-        supp = supplier;
+        this.supplier = supplier;
     }
 
     /**Calculates result, if it was not calculated early. Otherwise returns the previous result.
@@ -30,10 +26,10 @@ public class LazySimple<T> implements Lazy<T>{
      */
     @Override
     public T get() {
-        if (supp != null) {
-            res = supp.get();
-            supp = null;
+        if (supplier != null) {
+            result = supplier.get();
+            supplier = null;
         }
-        return res;
+        return result;
     }
 }

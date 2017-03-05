@@ -6,40 +6,36 @@ import java.util.function.Supplier;
  * @param <T> type of result.
  */
 public class LazyThread<T> implements Lazy<T> {
-    /**
-     * Produces result.
-     */
-    private Supplier<T> supp = null;
+    /** Produces result. */
+    private Supplier<T> supplier = null;
 
-    /**
-     * Result of supplier production.
-     */
-    private volatile T res = null;
+    /** Result of supplier production. */
+    private volatile T result = null;
 
     /**Creates lazyThread implementation by supplier.
      *
      * @param supplier produces result.
      */
     public LazyThread(Supplier<T> supplier) {
-        supp = supplier;
+        this.supplier = supplier;
     }
 
     /**Calculates result with locking, if it was not calculated early. Otherwise returns the previous result.
      *
-     * @return result of supplier production
+     * @return result of supplier production.
      */
     @Override
     public T get() {
-        Supplier<T> tmp = supp;
+        Supplier<T> tmp = supplier;
         if (tmp != null) {
             synchronized (this) {
-                tmp = supp;
+                tmp = supplier;
                 if (tmp != null) {
-                    res = supp.get();
-                    supp = null;
+                    result = supplier.get();
+                    supplier = null;
                 }
             }
         }
-        return res;
+        return result;
     }
 }
