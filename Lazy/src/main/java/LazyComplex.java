@@ -14,7 +14,8 @@ public class LazyComplex<T> implements Lazy<T>{
     private volatile T result = null;
 
     /** Atomic updater of field 'result' */
-    private static final AtomicReferenceFieldUpdater<LazyComplex, Object> updater = AtomicReferenceFieldUpdater.newUpdater(LazyComplex.class, Object.class, "result");
+    private static final AtomicReferenceFieldUpdater<LazyComplex, Object> updater =
+                         AtomicReferenceFieldUpdater.newUpdater(LazyComplex.class, Object.class, "result");
 
     /**Creates lazyComplex implementation by supplier.
      *
