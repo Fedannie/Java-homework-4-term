@@ -21,7 +21,7 @@ class ArgsHandler {
     private static final String HELP_CMD = "help";
     private static final String INIT_CMD = "init";
     private static final String MERGE_CMD = "merge";
-    private static final String REMOVE_CMD = "reset";
+    private static final String REMOVE_CMD = "remove";
 
     /** Current directory. */
     @NotNull
