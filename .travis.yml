@@ -1,9 +1,13 @@
-language: java
+branches:
+  only:
+    - /.*/
 
+language: java
 jdk:
   - oraclejdk8
-
+os:
+  - linux
 env:
+  - PROJECT_DIR=Lazy
   - PROJECT_DIR=VCS
-
-before_install: cd $PROJECT_DIR
+script: cd $PROJECT_DIR && ./gradlew check
