@@ -8,6 +8,5 @@ jdk:
 os:
   - linux
 env:
-  - PROJECT_DIR=Lazy
   - PROJECT_DIR=VCS
 script: cd $PROJECT_DIR && ./gradlew check
