@@ -1,7 +1,3 @@
-branches:
-  only:
-    - /.*/
-
 language: java
 jdk:
   - oraclejdk8
@@ -9,4 +5,4 @@ os:
   - linux
 env:
   - PROJECT_DIR=VCS
-script: cd $PROJECT_DIR && ./gradlew check
+script: cd $PROJECT_DIR
