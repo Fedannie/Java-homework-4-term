@@ -1,14 +1,12 @@
 package repository;
 
 import com.google.common.base.Splitter;
-import com.sun.istack.internal.NotNull;
-import com.sun.istack.internal.Nullable;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import exceptions.*;
 import git_objects.Commit;
-import git_objects.GitConstants;
 import git_objects.GitObject;
 import org.apache.commons.io.FileUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,12 +14,36 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Class which refers to MyGit repository.
  */
 public class Repository {
+    /**Name of folder in which every repository should be located.*/
+    private static final String REPOSITORY_DIRECTORY_NAME = ".vcs";
+    /**Name of folder {@code objects} in MyGit repository.*/
+    private static final String OBJECTS_FOLDER_NAME = "objects";
+    /**Name of folder {@code references} in MyGit repository.*/
+    private static final String REFERENCES_FOLDER_NAME = "refs";
+    /**Name of {@code HEAD} file in MyGit repository.*/
+    private static final String HEAD_FILE_NAME = "HEAD";
+    /**Name of {@code index} file in MyGit repository.*/
+    private static final String INDEX_FILE_NAME = "index";
+    /**Name of default branch name in MyGit repository.*/
+    public static final String DEFAULT_BRANCH_NAME = "master";
+    /**Name of username property in MyGit repository.*/
+    static final String USER_NAME_PROPERTY = "user.name";
+    /**Length of name of {@code objects} folder in MyGit repository.*/
+    private static final int OBJECTS_FOLDER_NAME_LENGTH = 2;
+    /**Prefix that is added to HEAD reference.*/
+    static final String REFERENCE_HEAD_PREFIX = "ref: ";
+    /**Prefix that is added to name of parent of commit.*/
+    public static final String PARENT_COMMIT_PREFIX = "parent: ";
+    /**Prefix that is added to commit message.*/
+    public static final String MESSAGE_COMMIT_PREFIX = "message: ";
+    /**Prefix tha is added to commit message if it was merged.*/
+    static final String MERGE_COMMIT_PREFIX = "merge: ";
+
     /**Directory of this repository.*/
     private final @NotNull Path directory;
     /**Path of HEAD file of this repository.*/
@@ -37,7 +59,7 @@ public class Repository {
      * Get Path to folder in which repository is located.
      * @return Path as Path class object.
      */
-    Path getDirectory() {
+    @NotNull Path getDirectory() {
         return directory;
     }
 
@@ -45,7 +67,7 @@ public class Repository {
      * Get Path to HEAD file.
      * @return Path as Path class object.
      */
-    Path getHEAD() {
+    @NotNull Path getHEAD() {
         return HEAD;
     }
 
@@ -53,6 +75,7 @@ public class Repository {
      * Get Path to folder objects in repository.
      * @return Path as Path class object.
      */
+    @NotNull
     private Path getObjects() {
         return objects;
     }
@@ -61,7 +84,7 @@ public class Repository {
      * Get Path to folder references in repository.
      * @return Path as Path class object.
      */
-    Path getReferences() {
+    @NotNull Path getReferences() {
         return references;
     }
 
@@ -72,10 +95,10 @@ public class Repository {
      */
     private Repository(@NotNull Path directory) throws IOException{
         this.directory = directory;
-        HEAD = directory.resolve(GitConstants.HEAD_FILE_NAME);
-        index = directory.resolve(GitConstants.INDEX_FILE_NAME);
-        objects = directory.resolve(GitConstants.OBJECTS_FOLDER_NAME);
-        references = directory.resolve(GitConstants.REFERENCES_FOLDER_NAME);
+        HEAD = directory.resolve(HEAD_FILE_NAME);
+        index = directory.resolve(INDEX_FILE_NAME);
+        objects = directory.resolve(OBJECTS_FOLDER_NAME);
+        references = directory.resolve(REFERENCES_FOLDER_NAME);
     }
 
     /**
@@ -88,7 +111,7 @@ public class Repository {
     static @Nullable Repository findRepository(@NotNull Path path)
             throws DirectoryExpectedException, IOException {
         while (path != null) {
-            Path repositoryDirectory = path.resolve(GitConstants.REPOSITORY_DIRECTORY_NAME);
+            Path repositoryDirectory = path.resolve(REPOSITORY_DIRECTORY_NAME);
             if (Files.exists(repositoryDirectory)) {
                 return new Repository(repositoryDirectory);
             }
@@ -111,12 +134,12 @@ public class Repository {
         if (findRepository(path) != null) {
             throw new GitAlreadyInitializedException("");
         }
-        Path directory = path.resolve(GitConstants.REPOSITORY_DIRECTORY_NAME);
+        Path directory = path.resolve(REPOSITORY_DIRECTORY_NAME);
         Files.createDirectory(directory);
-        Files.createDirectory(directory.resolve(GitConstants.OBJECTS_FOLDER_NAME));
-        Files.createDirectory(directory.resolve(GitConstants.REFERENCES_FOLDER_NAME));
-        Files.createFile(directory.resolve(GitConstants.INDEX_FILE_NAME));
-        Files.createFile(directory.resolve(GitConstants.HEAD_FILE_NAME));
+        Files.createDirectory(directory.resolve(OBJECTS_FOLDER_NAME));
+        Files.createDirectory(directory.resolve(REFERENCES_FOLDER_NAME));
+        Files.createFile(directory.resolve(INDEX_FILE_NAME));
+        Files.createFile(directory.resolve(HEAD_FILE_NAME));
         return new Repository(directory);
     }
 
@@ -148,7 +171,7 @@ public class Repository {
      * @return {@code true} if there could be an object in repository with this hash, {@code false} otherwise.
      */
     boolean isValidSha(@NotNull String sha) {
-        return sha.length() > GitConstants.OBJECTS_FOLDER_NAME_LENGTH && Files.exists(getObject(sha));
+        return sha.length() > OBJECTS_FOLDER_NAME_LENGTH && Files.exists(getObject(sha));
     }
 
     /**
@@ -157,8 +180,8 @@ public class Repository {
      * @return Path to object found as {@code Path} object.
      */
     Path getObject(@NotNull String sha) {
-        Path subDirectory = getObjects().resolve(sha.substring(0, GitConstants.OBJECTS_FOLDER_NAME_LENGTH));
-        return subDirectory.resolve(sha.substring(GitConstants.OBJECTS_FOLDER_NAME_LENGTH));
+        Path subDirectory = getObjects().resolve(sha.substring(0, OBJECTS_FOLDER_NAME_LENGTH));
+        return subDirectory.resolve(sha.substring(OBJECTS_FOLDER_NAME_LENGTH));
     }
 
     /**
@@ -173,13 +196,13 @@ public class Repository {
         }
         List<String> headLines = Files.readAllLines(getHEAD());
         if (headLines.size() == 0) {
-            return GitConstants.REFERENCE_HEAD_PREFIX + GitConstants.DEFAULT_BRANCH_NAME;
+            return REFERENCE_HEAD_PREFIX + DEFAULT_BRANCH_NAME;
         } else if (headLines.size() > 1) {
             throw new HeadFileFailedException("HEAD size is too big.");
         } else {
             String head = headLines.get(0);
-            if (head.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-                String branchName = head.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+            if (head.startsWith(REFERENCE_HEAD_PREFIX)) {
+                String branchName = head.substring(REFERENCE_HEAD_PREFIX.length());
                 if (!Files.exists(getReferences().resolve(branchName))) {
                     throw new HeadFileFailedException("Reference directory does not exist.");
                 }
@@ -234,11 +257,11 @@ public class Repository {
      */
     String addGitObject(@NotNull GitObject object)
             throws IOException {
-        Path objectDirectory = objects.resolve(object.getSha().substring(0, GitConstants.OBJECTS_FOLDER_NAME_LENGTH));
+        Path objectDirectory = objects.resolve(object.getSha().substring(0, OBJECTS_FOLDER_NAME_LENGTH));
         if (!Files.exists(objectDirectory)) {
             Files.createDirectory(objectDirectory);
         }
-        Files.write(objectDirectory.resolve(object.getSha().substring(GitConstants.OBJECTS_FOLDER_NAME_LENGTH)),
+        Files.write(objectDirectory.resolve(object.getSha().substring(OBJECTS_FOLDER_NAME_LENGTH)),
                 object.getContent());
         return object.getSha();
     }
@@ -292,14 +315,14 @@ public class Repository {
         Date date = new Date(Long.parseLong(commitLines.get(2)));
         int messageStartLineIndex = 3;
         while (messageStartLineIndex < commitLines.size() &&
-                !commitLines.get(messageStartLineIndex).startsWith(GitConstants.MESSAGE_COMMIT_PREFIX)) {
+                !commitLines.get(messageStartLineIndex).startsWith(MESSAGE_COMMIT_PREFIX)) {
             messageStartLineIndex++;
         }
         if (messageStartLineIndex == commitLines.size()) {
             throw new InvalidCommitException("No message in commit.");
         }
         StringBuilder messageBuilder = new StringBuilder(commitLines.get(messageStartLineIndex)
-                .substring(GitConstants.MESSAGE_COMMIT_PREFIX.length()));
+                .substring(MESSAGE_COMMIT_PREFIX.length()));
         for (int i = messageStartLineIndex + 1; i < commitLines.size(); ++i) {
             messageBuilder.append('\n');
             messageBuilder.append(commitLines.get(i));
@@ -309,11 +332,11 @@ public class Repository {
         List<String> parentSet = nextCommit.getParents();
         for (int i = 3; i < messageStartLineIndex; ++i) {
             String line = commitLines.get(i);
-            if (!line.startsWith(GitConstants.PARENT_COMMIT_PREFIX) ||
-                    !isValidSha(line.substring(GitConstants.PARENT_COMMIT_PREFIX.length()))) {
+            if (!line.startsWith(PARENT_COMMIT_PREFIX) ||
+                    !isValidSha(line.substring(PARENT_COMMIT_PREFIX.length()))) {
                 throw new InvalidCommitException("Wrong format of file.");
             }
-            parentSet.add(line.substring(GitConstants.PARENT_COMMIT_PREFIX.length()));
+            parentSet.add(line.substring(PARENT_COMMIT_PREFIX.length()));
         }
         return nextCommit;
     }
@@ -359,8 +382,8 @@ public class Repository {
     String getCurrentRevision() throws HeadFileFailedException, IOException{
         String currentHead = getCurrentHead();
         String currentRevision;
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            String currentBranch = currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+        if (currentHead.startsWith(REFERENCE_HEAD_PREFIX)) {
+            String currentBranch = currentHead.substring(REFERENCE_HEAD_PREFIX.length());
             Path reference = getReferences().resolve(currentBranch);
             if (!Files.exists(reference)) {
                 throw new HeadFileFailedException("File does not exist " + reference.toString());
@@ -371,4 +394,5 @@ public class Repository {
         }
         return currentRevision;
     }
+
 }

@@ -1,10 +1,6 @@
 package git_objects;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import com.sun.istack.internal.NotNull;
-
-import java.io.Serializable;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Class of files, store content of file.
@@ -29,7 +25,7 @@ public class Blob extends GitObjectNamed{
      * @return Content as byte array.
      */
     @Override
-    public byte[] getContent() {
+    public @NotNull byte[] getContent() {
         return content;
     }
 }

@@ -1,10 +1,10 @@
 package repository;
 
 import com.google.common.base.Splitter;
-import com.sun.istack.internal.NotNull;
-import com.sun.istack.internal.Nullable;
 import exceptions.*;
 import git_objects.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,24 +17,28 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
- * repository.Manager of MyGit repository.
+ * Manager of MyGit repository.
+ * Managing class that provides all the VCS functionality.
  */
 public class Manager {
 
+    /**Repository, which is managed by this {@code Manager} object.*/
+    private Repository repository;
+
     /**
-     * Find an existing repository in given directory or its parents.
+     * Find an existing repository in given directory or its parents and save it
+     * in private {@code Repository} object of this class.
      * @param path Directory, where should be found repository.
-     * @return A repository object if found it, {@code null} if did not found.
      * @throws DirectoryExpectedException If given path is not a directory.
      * @throws IOException If something went wrong with files or paths.
      */
-    public static @Nullable Repository findRepository(@NotNull Path path)
+    public Manager(@NotNull Path path)
             throws DirectoryExpectedException, IOException {
         path = path.toRealPath(LinkOption.NOFOLLOW_LINKS);
         if (!Files.isDirectory(path)) {
             throw new DirectoryExpectedException("");
         }
-        return Repository.findRepository(path);
+        repository = Repository.findRepository(path);
     }
 
     /**
@@ -54,38 +58,35 @@ public class Manager {
 
     /**
      * Add file to repository. Makes Blob object of given file and add it to given repository.
-     * @param repository Repository in which file should be added.
      * @param filePath Path to file which is wanted to be added.
      * @return SHA-1 hash of Blob object of given file.
      * @throws IOException Throws if something goes wrong with file system.
      */
-    public static String addFile(@NotNull Repository repository, @NotNull Path filePath) throws IOException {
+    public String addFile(@NotNull Path filePath) throws IOException {
         return repository.addGitObject(new Blob(Files.readAllBytes(filePath), filePath.getFileName().toString()));
     }
 
     /**
-     * Read index file of given repository and return {@code Map<Path, String>} with its content.
-     * @param repository Index file of this repository would be read.
+     * Read index file of current repository and return {@code Map<Path, String>} with its content.
      * @return {@code Map<Path, String>} with content of index file.
      * @throws IndexFileFailedException Throws if reading index file failed.
      * @throws IOException Throws if something goes wrong with file system.
      */
-    private static @NotNull Map<Path, String> readIndexFile(@NotNull Repository repository)
+    private @NotNull Map<Path, String> readIndexFile()
             throws IndexFileFailedException, IOException {
         return repository.readIndexFile();
     }
 
     /**
      * Update index file up to contemporary content of repository.
-     * @param repository Index file of which repository would be updated.
      * @param addedFiles Which files where added to repository since last update in format of {@code Map}.
      * @param removedFiles Which where removed from repository since last update as list of {@code Path} objects.
      * @throws IOException Throws when something goes wrong with file system.
      * @throws IndexFileFailedException Throws when reading or writing to index file failed.
      */
-    private static void updateIndex(@NotNull Repository repository, @NotNull Map<Path, String> addedFiles,
+    private void updateIndex(@NotNull Map<Path, String> addedFiles,
                                     @NotNull Set<Path> removedFiles) throws IOException, IndexFileFailedException{
-        Map<Path, String> index = readIndexFile(repository);
+        Map<Path, String> index = readIndexFile();
         index.keySet().removeAll(removedFiles);
         index.putAll(addedFiles);
         repository.writeToIndex(index.entrySet().stream()
@@ -103,22 +104,21 @@ public class Manager {
      * @throws DirectoryExpectedException Throws when {@code Repository.resolveRepository}
      *         throws DirectoryExpectedException. Given path does not name a directory.
      */
-    public static void addToIndex(@NotNull Path path)
-            throws GitNotInitializedException, IOException, IndexFileFailedException, DirectoryExpectedException {
+    public void addToIndex(@NotNull Path path) throws GitNotInitializedException, IOException,
+            IndexFileFailedException, DirectoryExpectedException {
         path = path.toRealPath(LinkOption.NOFOLLOW_LINKS);
-        Repository repository = Repository.resolveRepository(path, true);
         Map<Path, String> addedFiles = new HashMap<>();
         Files.walk(path).forEach(filePath -> {
             filePath = filePath.toAbsolutePath().normalize();
             if (Files.isRegularFile(filePath) && !filePath.startsWith(repository.getDirectory())) {
                 try{
-                    addedFiles.put(repository.getDirectory().getParent().relativize(filePath), addFile(repository, filePath));
+                    addedFiles.put(repository.getDirectory().getParent().relativize(filePath), addFile(filePath));
                 } catch (IOException e){
-                    //Oh no! Exception inside lambda!
+                    e.printStackTrace();
                 }
             }
         });
-        updateIndex(repository, addedFiles, Collections.emptySet());
+        updateIndex(addedFiles, Collections.emptySet());
     }
 
     /**
@@ -130,8 +130,8 @@ public class Manager {
      * @throws DirectoryExpectedException Throws when {@code Repository.resolveRepository}
      *         throws DirectoryExpectedException. Given path does not name a directory.
      */
-    public static void removeFromIndex(@NotNull Path path)
-            throws IOException, GitNotInitializedException, IndexFileFailedException, DirectoryExpectedException {
+    public void removeFromIndex(@NotNull Path path) throws IOException, GitNotInitializedException,
+            IndexFileFailedException, DirectoryExpectedException {
         path = path.toRealPath(LinkOption.NOFOLLOW_LINKS);
         Repository repository = Repository.resolveRepository(path, true);
         Set<Path> removedFiles = new HashSet<>();
@@ -142,19 +142,18 @@ public class Manager {
             }
         });
         Files.delete(path);
-        updateIndex(repository, Collections.emptyMap(), removedFiles);
+        updateIndex(Collections.emptyMap(), removedFiles);
     }
 
     /**
      * Built tree of repository by its index file.
-     * @param repository Tree of which repository would be built.
      * @return Tree of repository as {@code Tree} object.
      * @throws IndexFileFailedException Trows when reading of index file failed.
      * @throws IOException Throws when something goes wrong with file system.
      */
-    private static @NotNull Tree collectTreeFromIndex(@NotNull Repository repository)
+    private @NotNull Tree collectTreeFromIndex()
             throws IndexFileFailedException, IOException {
-        Map<Path, String> index = readIndexFile(repository);
+        Map<Path, String> index = readIndexFile();
         Map<Path, Tree> pathToTree = new HashMap<>();
         pathToTree.put(Paths.get(""), new Tree(""));
         for (Path path : index.keySet()) {
@@ -177,32 +176,31 @@ public class Manager {
 
     /**
      * Make new commit with changes.
-     * @param repository Repository whose changes should be committed.
      * @param message Message of new commit.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
      * @throws DirectoryExpectedException Throws when given path is not a directory.
      * @throws IndexFileFailedException Throws when reading of index file failed.
      */
-    public static void commit(@NotNull Repository repository, @NotNull String message, @NotNull String extraParent)
+    public void commit(@NotNull String message, @Nullable String extraParent)
             throws IOException, HeadFileFailedException,
             DirectoryExpectedException, IndexFileFailedException {
         String currentHead = repository.getCurrentHead();
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            String currentBranch = currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+        if (currentHead.startsWith(Repository.REFERENCE_HEAD_PREFIX)) {
+            String currentBranch = currentHead.substring(Repository.REFERENCE_HEAD_PREFIX.length());
             String parent = null;
             Path reference = repository.getReferences().resolve(currentBranch);
             if (Files.exists(reference)) {
                 parent = Files.readAllLines(reference).get(0);
             }
-            Tree tree = collectTreeFromIndex(repository);
+            Tree tree = collectTreeFromIndex();
             repository.addGitObject(tree);
             Commit commit = new Commit(tree.getSha(), message, new ArrayList<>(),
-                    System.getProperty(GitConstants.USER_NAME_PROPERTY), new Date());
+                    System.getProperty(Repository.USER_NAME_PROPERTY), new Date());
             if (parent != null) {
                 commit.addParent(parent);
             }
-            if (extraParent != null) {
+            if (extraParent != null){
                 commit.addParent(extraParent);
             }
             repository.addGitObject(commit);
@@ -211,64 +209,58 @@ public class Manager {
             }
             Files.write(reference, commit.getSha().getBytes());
         } else {
-            Tree tree = collectTreeFromIndex(repository);
+            Tree tree = collectTreeFromIndex();
             repository.addGitObject(tree);
             Commit commit = new Commit(tree.getSha(), message, new ArrayList<>(),
-                    System.getProperty(GitConstants.USER_NAME_PROPERTY), new Date());
+                    System.getProperty(Repository.USER_NAME_PROPERTY), new Date());
             commit.addParent(currentHead);
-            if (extraParent != null) {
-                commit.addParent(extraParent);
-            }
+            commit.addParent(extraParent);
             Files.write(repository.getHEAD(), repository.addGitObject(commit).getBytes());
         }
     }
 
     /**
      * Create new branch in given directory.
-     * @param repository Repository in which should be new branch created.
      * @param branchName Name of new branch.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
      * @throws DirectoryExpectedException Throws when given path is not a directory.
      * @throws BranchAlreadyExistException Throws when trying to create branch that already exists.
      */
-    public static void newBranch(@NotNull Repository repository, @NotNull String branchName)
-            throws IOException, DirectoryExpectedException,
-            HeadFileFailedException, BranchAlreadyExistException{
+    public void newBranch(@NotNull String branchName) throws IOException,
+            DirectoryExpectedException, HeadFileFailedException, BranchAlreadyExistException{
         Path newReference = repository.getReferences().resolve(branchName);
         if (Files.exists(newReference)) {
             throw new BranchAlreadyExistException("");
         }
         String currentHead = repository.getCurrentHead();
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            String currentBranch = currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+        if (currentHead.startsWith(Repository.REFERENCE_HEAD_PREFIX)) {
+            String currentBranch = currentHead.substring(Repository.REFERENCE_HEAD_PREFIX.length());
             Files.copy(repository.getReferences().resolve(currentBranch), newReference);
         } else {
             Files.write(newReference, currentHead.getBytes());
         }
-        Files.write(repository.getHEAD(), (GitConstants.REFERENCE_HEAD_PREFIX + branchName).getBytes());
+        Files.write(repository.getHEAD(), (Repository.REFERENCE_HEAD_PREFIX + branchName).getBytes());
     }
 
     /**
      * Returns name of current branch.
-     * @param repository Repository current branch of which should be found.
      * @return {@code String} object with name of current branch.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
      * @throws DirectoryExpectedException Throws when given path is not a directory.
      */
-    public static String currentBranch(@NotNull Repository repository)
+    public String currentBranch()
             throws IOException, DirectoryExpectedException, HeadFileFailedException {
         String currentHead = repository.getCurrentHead();
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            return currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+        if (currentHead.startsWith(Repository.REFERENCE_HEAD_PREFIX)) {
+            return currentHead.substring(Repository.REFERENCE_HEAD_PREFIX.length());
         }
         return null;
     }
 
     /**
      * Delete Branch by its name.
-     * @param repository Repository in which branch should be removed.
      * @param branchName Name of branch wanted to be deleted.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
@@ -276,17 +268,16 @@ public class Manager {
      * @throws BranchDoesNotExistException Throws when trying to delete branch which does not exist.
      * @throws CanNotDeleteBranchException Throws when trying to delete branch which HEAD file points on.
      */
-    public static void deleteBranch(@NotNull Repository repository, @NotNull String branchName)
-            throws IOException, DirectoryExpectedException,
-            HeadFileFailedException, BranchDoesNotExistException, CanNotDeleteBranchException{
+    public void deleteBranch(@NotNull String branchName) throws IOException,
+            DirectoryExpectedException, HeadFileFailedException,
+            BranchDoesNotExistException, CanNotDeleteBranchException{
         Path pastReference = repository.getReferences().resolve(branchName);
         if (!Files.exists(pastReference)) {
             throw new BranchDoesNotExistException("");
         }
         String currentHead = repository.getCurrentHead();
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            Path currentBranch = Paths.get(currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length()));
-            if (currentHead.equals(GitConstants.REFERENCE_HEAD_PREFIX + branchName)) {
+        if (currentHead.startsWith(Repository.REFERENCE_HEAD_PREFIX)) {
+            if (currentHead.equals(Repository.REFERENCE_HEAD_PREFIX + branchName)) {
                 throw new CanNotDeleteBranchException("");
             }
         }
@@ -295,7 +286,6 @@ public class Manager {
 
     /**
      Checkouts a revision and moves HEAD there.
-     * @param repository Repository in which checkout should be done.
      * @param name Name of branch or file on version of which we want to switch.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
@@ -305,18 +295,18 @@ public class Manager {
      * @throws IndexFileFailedException Throws when reading of index file failed.
      * @throws InvalidTreeException Throws when tree file format is incorrect.
      */
-    public static void checkout(@NotNull Repository repository, @NotNull String name)
+    public void checkout(@NotNull String name)
             throws IOException, DirectoryExpectedException, InvalidCommitException, HeadFileFailedException,
-            NoSuchRevisionException, IndexFileFailedException, InvalidTreeException, IndexFileNotEmptyException {
+            NoSuchRevisionException, IndexFileFailedException, InvalidTreeException{
         String newRevision = repository.getNewRevision(name);
         String currentRevision = repository.getCurrentRevision();
         if (!repository.isValidSha(currentRevision)) {
             throw new NoSuchRevisionException("SHA-1 hash of revision is invalid.");
         }
-        Commit currentRevisionCommit = readCommit(repository, currentRevision);
-        Commit newRevisionCommit = readCommit(repository, newRevision);
-        Tree currentTree = readTree(repository, currentRevisionCommit.getTree());
-        Tree newTree = readTree(repository, newRevisionCommit.getTree());
+        Commit currentRevisionCommit = readCommit(currentRevision);
+        Commit newRevisionCommit = readCommit(newRevision);
+        Tree currentTree = readTree(currentRevisionCommit.getTree());
+        Tree newTree = readTree(newRevisionCommit.getTree());
         Set<Path> removedFiles = walkVcsTree(currentTree).keySet();
         Map<Path, String> addedFiles = walkVcsTree(newTree);
         for (Path removedFile : removedFiles) {
@@ -330,49 +320,45 @@ public class Manager {
             }
             Files.copy(repository.getObject(sha), repository.getDirectory().getParent().resolve(addedFile));
         }
-        updateIndex(repository, addedFiles, removedFiles);
+        updateIndex(addedFiles, removedFiles);
         Files.write(repository.getHEAD(),
-                ((Files.exists(repository.getReferences().resolve(name)) ? GitConstants.REFERENCE_HEAD_PREFIX
+                ((Files.exists(repository.getReferences().resolve(name)) ? Repository.REFERENCE_HEAD_PREFIX
                                                                          : "") + name).getBytes());
     }
 
     /**
      * Reads commit from objects file by its SHA-1 hash.
-     * @param repository Repository in which commit was created.
      * @param commit SHA-1 hash of commit.
      * @return Commit and all its information as {@code Commit} object.
      * @throws InvalidCommitException Throws when commit information is incorrect.
      * @throws IOException Throws when something is wrong with file system.
      */
-    private static @NotNull Commit readCommit(@NotNull Repository repository, @NotNull String commit)
+    private @NotNull Commit readCommit(@NotNull String commit)
             throws InvalidCommitException, IOException {
         return repository.getCommit(commit);
     }
 
     /**
      * Reads tree of whole given repository.
-     * @param repository Tree of which repository should be read.
      * @param tree SHA-1 hash of result tree.
      * @return Tree of repository as {@code Tree} object.
      * @throws IOException Throws when something is wrong with file system.
      * @throws InvalidTreeException Throws when tree file format is incorrect.
      */
-    private static @NotNull Tree readTree(@NotNull Repository repository, @NotNull String tree)
+    private @NotNull Tree readTree(@NotNull String tree)
             throws InvalidTreeException, IOException {
-        return readTree(repository, tree, "");
+        return readTree(tree, "");
     }
 
     /**
      * Reads subtree tree of given repository.
-     * @param repository Repository in which tree is located.
      * @param tree SHA-1 hash of the tree.
      * @param treeName Name of the tree.
      * @return Subtree of repository as {@code Tree} object.
      * @throws IOException Throws when something is wrong with file system.
      * @throws InvalidTreeException Throws when tree file format is incorrect.
      */
-    private static @NotNull Tree readTree(@NotNull Repository repository,
-                                          @NotNull String tree, @NotNull String treeName)
+    private @NotNull Tree readTree(@NotNull String tree, @NotNull String treeName)
             throws InvalidTreeException, IOException {
         if (!repository.isValidSha(tree)) {
             throw new InvalidTreeException("Invalid SHA-1 hash of tree.");
@@ -401,7 +387,7 @@ public class Manager {
                 }
                 answerTree.addChild(new GitObjectNamed(name, type, sha));
             } else {
-                answerTree.addChild(readTree(repository, sha, treeName));
+                answerTree.addChild(readTree(sha, treeName));
             }
         }
         return answerTree;
@@ -436,13 +422,11 @@ public class Manager {
 
     /**
      * Return all branches in MyGit repository.
-     * @param repository Repository branches of which should be listed.
      * @return {@code List<String>} with names of all branches.
      * @throws IOException Throws when something is wrong with file system.
      * @throws DirectoryExpectedException Throws when given path is not a directory.
      */
-    public static List<String> allBranches(@NotNull Repository repository)
-            throws IOException, DirectoryExpectedException {
+    public List<String> allBranches() throws IOException, DirectoryExpectedException {
         Path reference = repository.getReferences();
         List<String> ans = Files.walk(reference).map(Path::toString).collect(Collectors.toList());
         return ans.subList(1, ans.size());
@@ -450,7 +434,6 @@ public class Manager {
 
     /**
      * Merge current branch (revision) and given branch(revision).
-     * @param repository Repository branches of which should be merged.
      * @param revisionName Second revision name, which current should be merged to.
      * @throws IOException Throws when something is wrong with file system.
      * @throws HeadFileFailedException Throws when reading of HEAD file failed.
@@ -460,14 +443,14 @@ public class Manager {
      * @throws IndexFileFailedException Throws when reading of index file failed.
      * @throws InvalidTreeException Throws when tree file format is incorrect.
      */
-    public static void merge(@NotNull Repository repository, @NotNull String revisionName)
-            throws IOException, DirectoryExpectedException, HeadFileFailedException,
-            IndexFileFailedException, NoSuchRevisionException, InvalidTreeException, InvalidCommitException {
+    public void merge(@NotNull String revisionName) throws IOException, DirectoryExpectedException,
+            HeadFileFailedException, IndexFileFailedException, NoSuchRevisionException,
+            InvalidTreeException, InvalidCommitException {
         String mergedRevision = repository.getMergedRevisionSha(revisionName);
         String currentHead = repository.getCurrentHead();
         String currentRevision;
-        if (currentHead.startsWith(GitConstants.REFERENCE_HEAD_PREFIX)) {
-            String currentBranch = currentHead.substring(GitConstants.REFERENCE_HEAD_PREFIX.length());
+        if (currentHead.startsWith(Repository.REFERENCE_HEAD_PREFIX)) {
+            String currentBranch = currentHead.substring(Repository.REFERENCE_HEAD_PREFIX.length());
             Path reference = repository.getReferences().resolve(currentBranch);
             if (!Files.exists(reference)) {
                 throw new HeadFileFailedException("");
@@ -480,8 +463,8 @@ public class Manager {
             throw new NoSuchRevisionException("SHA-1 of revision is incorrect.");
         }
         Set<Path> removedFiles = Collections.emptySet();
-        Commit deployedRevision = readCommit(repository, mergedRevision);
-        Tree deployedTree = readTree(repository, deployedRevision.getTree());
+        Commit deployedRevision = readCommit(mergedRevision);
+        Tree deployedTree = readTree(deployedRevision.getTree());
         Map<Path, String> addedFiles = walkVcsTree(deployedTree);
         for (Map.Entry<Path, String> entry : addedFiles.entrySet()) {
             Path addedFile = entry.getKey();
@@ -491,18 +474,67 @@ public class Manager {
             }
             Files.copy(repository.getObject(sha), repository.getDirectory().resolve(addedFile), REPLACE_EXISTING);
         }
-        updateIndex(repository, addedFiles, removedFiles);
-        commit(repository, GitConstants.MERGE_COMMIT_PREFIX + revisionName, mergedRevision);
+        updateIndex(addedFiles, removedFiles);
+        commit(Repository.MERGE_COMMIT_PREFIX + revisionName, mergedRevision);
     }
 
     /**
      * Remove repository in given directory.
-     * @param repository Repository that should be removed.
      * @throws IOException Throws when something is wrong with file system.
      * @throws DirectoryExpectedException Throws when given path is not a directory.
      */
-    public static void removeRepository(@NotNull Repository repository) throws
+    public void removeRepository() throws
             IOException, DirectoryExpectedException{
         repository.removeRepository();
+    }
+
+    /**
+     * Get log of all commits, attached to current head revision.
+     * @return Log message with information about commit as {@code Log} object.
+     * @throws IOException Throws when something is wrong with file system.
+     * @throws GitNotInitializedException Throws when there if no any repository at such path.
+     * @throws HeadFileFailedException Throws when reading of HEAD file failed.
+     * @throws InvalidCommitException Throws when commit information is incorrect.
+     * @throws DirectoryExpectedException Throws when given path is not a directory
+     */
+    public @Nullable Log getLog() throws IOException, GitNotInitializedException,
+            DirectoryExpectedException, InvalidCommitException, HeadFileFailedException{
+        String startCommit = repository.getCurrentRevision();
+        Commit headCommit = readCommit(startCommit);
+        Set<String> presentSet = new HashSet<>();
+        presentSet.add(startCommit);
+        List<Commit> commits = getCommitsDFS(presentSet, new ArrayList<>(), headCommit);
+        Log currentLogMessage = null;
+        assert commits != null;
+        for (Commit commit : commits) {
+            currentLogMessage = new Log(commit, currentLogMessage);
+        }
+        return currentLogMessage;
+    }
+
+    /**
+     * Get all commits by bfs sorted be time of creation.
+     * @param presentSet SHA-1 hashes of all found commits.
+     * @param commits List of all found commits.
+     * @param currentCommit Commit whose parents should be examined the next moment.
+     * @return List of all found commits.
+     * @throws IOException Throws when something is wrong with file system.
+     * @throws InvalidCommitException Throws when commit information is incorrect.
+     */
+    private @Nullable List<Commit> getCommitsDFS(@Nullable Set<String> presentSet, @Nullable List<Commit> commits,
+                                                 @Nullable Commit currentCommit)
+            throws IOException, InvalidCommitException{
+        assert commits != null;
+        commits.add(currentCommit);
+        assert currentCommit != null;
+        for (String parent : currentCommit.getParents()) {
+            assert presentSet != null;
+            if (!presentSet.contains(parent)) {
+                presentSet.add(parent);
+                getCommitsDFS(presentSet, commits, readCommit(parent));
+            }
+        }
+        commits.sort(Comparator.comparingLong(Commit::getDateMilliseconds));
+        return commits;
     }
 }

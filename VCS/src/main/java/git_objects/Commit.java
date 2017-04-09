@@ -1,8 +1,8 @@
 package git_objects;
 
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
+import repository.Repository;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,7 +60,7 @@ public class Commit extends GitObject{
      * Returns name of creator of this commit.
      * @return Name of author as string.
      */
-    public String getAuthor() {
+    String getAuthor() {
         return author;
     }
 
@@ -68,8 +68,16 @@ public class Commit extends GitObject{
      * Returns date of creationf of this commit.
      * @return Date as Date type.
      */
-    public Date getDate() {
+    Date getDate() {
         return date;
+    }
+
+    /**
+     * Returns date of creationf of this commit.
+     * @return Date as Date type.
+     */
+    public long getDateMilliseconds() {
+        return date.getTime();
     }
 
     /**
@@ -103,11 +111,11 @@ public class Commit extends GitObject{
     @Override
     public String toString() {
         String parentsString = getParents().stream()
-                .map(parent -> GitConstants.PARENT_COMMIT_PREFIX + parent)
+                .map(parent -> Repository.PARENT_COMMIT_PREFIX + parent)
                 .collect(Collectors.joining("\n"));
         return getTree() + '\n' + getAuthor() + '\n' + date.getTime() +
                 (parentsString.isEmpty() ? "" : '\n' + parentsString) + '\n' +
-                GitConstants.MESSAGE_COMMIT_PREFIX + getMessage();
+                Repository.MESSAGE_COMMIT_PREFIX + getMessage();
     }
 
     /**

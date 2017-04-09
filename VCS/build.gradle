@@ -11,6 +11,18 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
+    compile group: 'org.jetbrains', name: 'annotations', version: '15.0'
     compile group: 'com.google.guava', name: 'guava', version: '21.0'
     compile group: 'org.apache.directory.studio', name: 'org.apache.commons.io', version: '2.4'
+}
+
+task createJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'MyGit application',
+                'Implementation-Version': version,
+                 'Main-Class': 'Application.Main'
+        }
+    baseName = project.name + '-application'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }

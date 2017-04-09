@@ -1,9 +1,7 @@
 package git_objects;
 
-import com.google.common.hash.HashFunction;
 
-import com.google.common.hash.Hashing;
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 
 /**GitObjects which have names. */
 public class GitObjectNamed extends GitObject{
@@ -15,6 +13,7 @@ public class GitObjectNamed extends GitObject{
      * Returns name of an object.
      * @return Name of object as string.
      */
+    @NotNull
     public String getName() {
         return name;
     }
@@ -24,7 +23,7 @@ public class GitObjectNamed extends GitObject{
      * @param name Name of created object.
      * @param type Type of created object.
      */
-    public GitObjectNamed(@NotNull String name, @NotNull GitObjectType type) {
+    GitObjectNamed(@NotNull String name, @NotNull GitObjectType type) {
         super(type);
         this.name = name;
     }
@@ -46,7 +45,7 @@ public class GitObjectNamed extends GitObject{
      * @return Return {@code int} as result of comparison.
      */
     @Override
-    public int compareTo(Object object) {
+    public int compareTo(@NotNull Object object) {
         return name.compareTo(((GitObjectNamed) object).getName());
     }
 

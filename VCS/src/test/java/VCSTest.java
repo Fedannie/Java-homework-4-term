@@ -1,8 +1,6 @@
 import static org.junit.Assert.*;
-import static repository.Manager.*;
 
 import exceptions.CanNotDeleteBranchException;
-import git_objects.GitConstants;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -14,31 +12,26 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 public class VCSTest {
     private Path repositoryPath = Paths.get("JavaTest");
     private Path file1 = new File(repositoryPath.toString() + "/file1").toPath();
-    private Repository repository;
+    private Manager manager;
     @Before
     public void initRepository() throws Exception {
         Files.createDirectory(repositoryPath);
-        repository = init(repositoryPath);
+        Manager.init(repositoryPath);
+        manager = new Manager(repositoryPath);
     }
-
-    @Test
-    public void getRepositoryTest() throws Exception {
-        findRepository(repositoryPath);
-    }
-
+    
     @Test
     public void simpleAddTest() throws Exception {
         Files.createDirectory(repositoryPath.resolve("dir1"));
         Files.createFile(repositoryPath.resolve("dir1/file1"));
         Files.createFile(repositoryPath.resolve("dir1/file2"));
 
-        addFile(repository, repositoryPath.resolve("dir1/file1"));
-        addFile(repository, repositoryPath.resolve("dir1/file2"));
+        manager.addFile(repositoryPath.resolve("dir1/file1"));
+        manager.addFile(repositoryPath.resolve("dir1/file2"));
 
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
@@ -48,58 +41,58 @@ public class VCSTest {
     public void simpleCheckoutTest() throws Exception {
         byte[] content1 = "testContent1".getBytes();
         Files.write(file1, content1);
-        addToIndex(file1);
-        commit(repository, "test commit message", null);
-        newBranch(repository, "branch");
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        manager.newBranch("branch");
 
         Path file2 = new File(repositoryPath.toString() + "/file2").toPath();
         byte[] content2 = "testContent2".getBytes();
         Files.write(file2, content2);
-        addToIndex(file2);
-        commit(repository, "another test commit message", null);
+        manager.addToIndex(file2);
+        manager.commit("another test commit message", null);
 
-        checkout(repository, GitConstants.DEFAULT_BRANCH_NAME);
+        manager.checkout(Repository.DEFAULT_BRANCH_NAME);
         byte[] content3 = "testContent3".getBytes();
         Files.write(file2, content3);
-        addToIndex(file2);
-        commit(repository, "another test commit message", null);
-        checkout(repository, "branch");
-        assertEquals("branch", currentBranch(repository));
+        manager.addToIndex(file2);
+        manager.commit("another test commit message", null);
+        manager.checkout("branch");
+        assertEquals("branch", manager.currentBranch());
     }
 
     @Test
     public void simpleWorkWithBranchesTest() throws Exception {
-        assertEquals("master", currentBranch(repository));
+        assertEquals("master", manager.currentBranch());
         Path file1 = new File(repositoryPath.toString() + "/file1").toPath();
         byte[] content1 = "testContent1".getBytes();
         Files.write(file1, content1);
-        addToIndex(file1);
-        commit(repository, "test commit message", null);
-        newBranch(repository, "super_branch");
-        assertEquals("super_branch", currentBranch(repository));
-        deleteBranch(repository, "master");
-        assertEquals("super_branch", currentBranch(repository));
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        manager.newBranch("super_branch");
+        assertEquals("super_branch", manager.currentBranch());
+        manager.deleteBranch("master");
+        assertEquals("super_branch", manager.currentBranch());
     }
 
 
     @Test
     public void deleteBranchTest() throws Exception{
-        assertEquals("master", currentBranch(repository));
+        assertEquals("master", manager.currentBranch());
         Path file1 = new File(repositoryPath.toString() + "/file1").toPath();
         byte[] content1 = "testContent1".getBytes();
         Files.write(file1, content1);
-        addToIndex(file1);
-        commit(repository, "test commit message", null);
-        newBranch(repository, "super_branch");
-        assertEquals("super_branch", currentBranch(repository));
-        newBranch(repository, "super_puper_branch");
-        assertEquals("super_puper_branch", currentBranch(repository));
-        deleteBranch(repository, "super_branch");
-        assertEquals("super_puper_branch", currentBranch(repository));
-        checkout(repository, "master");
-        assertEquals("master", currentBranch(repository));
-        deleteBranch(repository, "super_puper_branch");
-        assertEquals("master", currentBranch(repository));
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        manager.newBranch("super_branch");
+        assertEquals("super_branch", manager.currentBranch());
+        manager.newBranch("super_puper_branch");
+        assertEquals("super_puper_branch", manager.currentBranch());
+        manager.deleteBranch("super_branch");
+        assertEquals("super_puper_branch", manager.currentBranch());
+        manager.checkout("master");
+        assertEquals("master", manager.currentBranch());
+        manager.deleteBranch("super_puper_branch");
+        assertEquals("master", manager.currentBranch());
     }
 
     @Test
@@ -107,64 +100,64 @@ public class VCSTest {
         Path file1 = new File(repositoryPath.toString() + "/file1").toPath();
         byte[] content1 = "testContent1".getBytes();
         Files.write(file1, content1);
-        addToIndex(file1);
-        commit(repository, "test commit message", null);
-        newBranch(repository, "first");
-        commit(repository, "first-1", null);
-        checkout(repository, "master");
-        assertEquals("master", currentBranch(repository));
-        merge(repository, "first");
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        manager.newBranch("first");
+        manager.commit("first-1", null);
+        manager.checkout("master");
+        assertEquals("master", manager.currentBranch());
+        manager.merge("first");
     }
 
     @Test
     public void mergeTest() throws Exception {
-        commit(repository, "Initial commit.", null);
-        newBranch(repository, "first");
+        manager.commit("Initial commit.", null);
+        manager.newBranch("first");
 
         Files.createDirectory(repositoryPath.resolve("dir1"));
         Files.createFile(repositoryPath.resolve("dir1/file1"));
 
-        addFile(repository, repositoryPath.resolve("dir1/file1"));
-        commit(repository, "First commit", null);
-        checkout(repository, "master");
-        newBranch(repository, "second");
+        manager.addFile(repositoryPath.resolve("dir1/file1"));
+        manager.commit("First commit", null);
+        manager.checkout("master");
+        manager.newBranch("second");
 
         Files.createFile(repositoryPath.resolve("dir1/file2"));
 
-        addFile(repository, repositoryPath.resolve("dir1/file2"));
-        commit(repository, "Second commit", null);
+        manager.addFile(repositoryPath.resolve("dir1/file2"));
+        manager.commit("Second commit", null);
 
-        checkout(repository, "master");
-
-        assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
-        assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
-
-        merge(repository, "first");
+        manager.checkout("master");
 
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
 
-        newBranch(repository, "third");
+        manager.merge("first");
+
+        assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
+        assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
+
+        manager.newBranch("third");
 
         Files.createDirectory(repositoryPath.resolve("dir2"));
         Files.createFile(repositoryPath.resolve("dir2/file1"));
 
-        addFile(repository, repositoryPath.resolve("dir2/file1"));
-        commit(repository, "Third commit", null);
-        merge(repository, "second");
+        manager.addFile(repositoryPath.resolve("dir2/file1"));
+        manager.commit("Third commit", null);
+        manager.merge("second");
 
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
         assertTrue(Files.exists(repositoryPath.resolve("dir2/file1")));
 
-        checkout(repository, "master");
-        merge(repository, "second");
+        manager.checkout("master");
+        manager.merge("second");
 
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
         assertTrue(Files.exists(repositoryPath.resolve("dir2/file1")));
 
-        merge(repository, "third");
+        manager.merge("third");
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file1")));
         assertTrue(Files.exists(repositoryPath.resolve("dir1/file2")));
         assertTrue(Files.exists(repositoryPath.resolve("dir2/file1")));
@@ -172,23 +165,23 @@ public class VCSTest {
 
     @Test(expected = CanNotDeleteBranchException.class)
     public void allBranchesTest() throws Exception{
-        commit(repository, "Initial commit.", null);
-        newBranch(repository, "first");
-        newBranch(repository, "second");
-        newBranch(repository, "third");
-        System.out.println(allBranches(repository));
-        deleteBranch(repository, "second");
-        System.out.println(allBranches(repository));
-        deleteBranch(repository, "master");
-        System.out.println(allBranches(repository));
-        deleteBranch(repository, "third");
-        System.out.println(allBranches(repository));
-        System.out.println(currentBranch(repository));
+        manager.commit("Initial commit.", null);
+        manager.newBranch("first");
+        manager.newBranch("second");
+        manager.newBranch("third");
+        System.out.println(manager.allBranches());
+        manager.deleteBranch("second");
+        System.out.println(manager.allBranches());
+        manager.deleteBranch("master");
+        System.out.println(manager.allBranches());
+        manager.deleteBranch("third");
+        System.out.println(manager.allBranches());
+        System.out.println(manager.currentBranch());
     }
 
     @After
     public void removeRepositoryTest() throws Exception {
-        removeRepository(repository);
+        manager.removeRepository();
         FileUtils.deleteDirectory(repositoryPath.toFile());
     }
 }
