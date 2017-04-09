@@ -6,3 +6,5 @@ os:
 env:
   - PROJECT_DIR=VCS
 script: cd $PROJECT_DIR
+before_install: 
+  - chmod +x gradlew
