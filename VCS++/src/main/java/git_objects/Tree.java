@@ -1,8 +1,6 @@
 package git_objects;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 import java.util.TreeSet;
@@ -20,6 +18,7 @@ public class Tree extends GitObjectNamed{
      * Returns everything located in this directory.
      * @return All files as list of TreeChild objects.
      */
+    @NotNull
     public Set<GitObjectNamed> getChildren() {
         return children;
     }

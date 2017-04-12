@@ -2,7 +2,7 @@ package git_objects;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 
@@ -27,7 +27,7 @@ public abstract class GitObject implements Serializable, Comparable{
      * Sha hash is null.
      * @param type Type of created object.
      */
-    public GitObject(@NotNull GitObjectType type){
+    GitObject(@NotNull GitObjectType type){
         this.type = type;
     }
 
@@ -37,7 +37,7 @@ public abstract class GitObject implements Serializable, Comparable{
      * @param type Type of created object.
      * @param sha Sha hash of an object.
      */
-    public GitObject(@NotNull GitObjectType type, @NotNull String sha){
+    GitObject(@NotNull GitObjectType type, @NotNull String sha){
         this.type = type;
         this.sha = sha;
         definite = true;
@@ -57,6 +57,7 @@ public abstract class GitObject implements Serializable, Comparable{
     /**Returns type of an object.
      * @return Type of object as GitObjectType object.
      */
+    @NotNull
     public GitObjectType getType() {
         return type;
     }
