@@ -1,3 +1,5 @@
+import logic.Client;
+import logic.Server;
 import org.junit.Before;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
