@@ -1,0 +1,17 @@
+group 'ru.spbau.java.fedorova'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+    compile group: 'org.jetbrains', name: 'annotations', version: '13.0'
+    compile group: 'commons-io', name: 'commons-io', version: '2.4'
+    compile group: 'com.google.collections', name: 'google-collections', version: '1.0-rc2'
+}
