@@ -1,3 +1,5 @@
+import logic.Client;
+import logic.Server;
 import org.junit.Before;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
@@ -16,14 +18,14 @@ public final class Tests {
     private static final int MAX_PORT = 20000;
     private static final int MIN_PORT = 10000;
     private Path root;
-    private static final int CNT = 20;
+    private static final int MAX_NUMBER_OF_TESTS = 20;
     private static int state = 0;
     private static final Random RND = new Random();
 
     private static final FileVisitor<Path> RANDOM_FILE_CREATOR = new SimpleFileVisitor<Path>() {
         @Override
         public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-            int count = RND.nextInt(CNT) + 1;
+            int count = RND.nextInt(MAX_NUMBER_OF_TESTS) + 1;
             for (int i = 0; i < count; i++) {
                 String name = "file" + Integer.toString(i);
                 Files.createFile(dir.resolve(name)).toFile().deleteOnExit();
@@ -37,7 +39,7 @@ public final class Tests {
     private static final FileVisitor<Path> RANDOM_DIR_CREATOR = new SimpleFileVisitor<Path>() {
         @Override
         public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-            int count = RND.nextInt(CNT) + 1;
+            int count = RND.nextInt(MAX_NUMBER_OF_TESTS) + 1;
             for (int i = 0; i < count; i++) {
                 String name = "dir" + Integer.toString(state) + "_" + Integer.toString(i);
                 Files.createDirectory(dir.resolve(name)).toFile().deleteOnExit();
