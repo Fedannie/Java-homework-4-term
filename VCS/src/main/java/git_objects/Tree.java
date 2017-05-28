@@ -37,7 +37,7 @@ public class Tree extends GitObjectNamed{
      * @return Content as array of bytes.
      */
     @Override
-    public byte[] getContent(){
+    public byte[] getContent() {
         return (children.stream().map(child -> child.getType().toString() + "\t" +
                 child.getSha() + "\t" + child.getName()).collect(Collectors.joining("\n"))).getBytes();
     }

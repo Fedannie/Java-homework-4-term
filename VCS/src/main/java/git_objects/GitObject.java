@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.Serializable;
 
 /**Parent of all objects in repository.*/
-public abstract class GitObject implements Serializable, Comparable{
+public abstract class GitObject implements Serializable, Comparable {
     /**Content of the file as array of bytes.*/
     public abstract byte[] getContent();
     /**SHA-1 hash of GitObject*/
@@ -27,7 +27,7 @@ public abstract class GitObject implements Serializable, Comparable{
      * Sha hash is null.
      * @param type Type of created object.
      */
-    GitObject(@NotNull GitObjectType type){
+    GitObject(@NotNull GitObjectType type) {
         this.type = type;
     }
 
@@ -37,7 +37,7 @@ public abstract class GitObject implements Serializable, Comparable{
      * @param type Type of created object.
      * @param sha Sha hash of an object.
      */
-    GitObject(@NotNull GitObjectType type, @NotNull String sha){
+    GitObject(@NotNull GitObjectType type, @NotNull String sha) {
         this.type = type;
         this.sha = sha;
         definite = true;

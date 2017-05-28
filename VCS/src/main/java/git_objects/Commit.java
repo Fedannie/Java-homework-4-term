@@ -52,6 +52,7 @@ public class Commit extends GitObject{
      * Returns message with which commit was created.
      * @return Message as string.
      */
+    @NotNull
     public String getMessage() {
         return message;
     }
@@ -60,7 +61,7 @@ public class Commit extends GitObject{
      * Returns name of creator of this commit.
      * @return Name of author as string.
      */
-    String getAuthor() {
+    @NotNull String getAuthor() {
         return author;
     }
 
@@ -68,7 +69,7 @@ public class Commit extends GitObject{
      * Returns date of creationf of this commit.
      * @return Date as Date type.
      */
-    Date getDate() {
+    @NotNull Date getDate() {
         return date;
     }
 
@@ -84,6 +85,7 @@ public class Commit extends GitObject{
      * Retruns hash of base tree.
      * @return Hash of base tree as string.
      */
+    @NotNull
     public String getTree() {
         return tree;
     }
@@ -92,6 +94,7 @@ public class Commit extends GitObject{
      * Returns hashes of parents of this commit.
      * @return Hashes of parents as list of string.
      */
+    @NotNull
     public List<String> getParents() {
         return parents;
     }
@@ -133,7 +136,7 @@ public class Commit extends GitObject{
      * @return Return {@code int} as result of comparison.
      */
     @Override
-    public int compareTo(Object object) {
+    public int compareTo(@NotNull Object object) {
         return date.compareTo(((Commit) object).getDate());
     }
 }

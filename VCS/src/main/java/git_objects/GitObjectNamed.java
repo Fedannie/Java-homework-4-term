@@ -4,7 +4,7 @@ package git_objects;
 import org.jetbrains.annotations.NotNull;
 
 /**GitObjects which have names. */
-public class GitObjectNamed extends GitObject{
+public class GitObjectNamed extends GitObject {
     /**Name of GitObject.*/
     @NotNull
     private final String name;

@@ -1,8 +1,10 @@
 
 import exceptions.*;
 import git_objects.Log;
+import git_objects.StatusEntry;
 import org.jetbrains.annotations.NotNull;
 import repository.Manager;
+import repository.StatusManager;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -13,7 +15,6 @@ import java.util.stream.Collectors;
 
 /** Parses and handles arguments of console app. */
 class ArgsHandler {
-
     /** Allowable arguments of command line.*/
     private static final String ADD_CMD = "add";
     private static final String BRANCH_CMD = "branch";
@@ -24,6 +25,9 @@ class ArgsHandler {
     private static final String MERGE_CMD = "merge";
     private static final String REMOVE_CMD = "remove";
     private static final String LOG_CMD = "log";
+    private static final String CLEAN_CMD = "clean";
+    private static final String STATUS_CMD = "status";
+    private static final String RESET_CMD = "reset";
 
     /** Current directory. */
     @NotNull
@@ -58,7 +62,7 @@ class ArgsHandler {
             NoSuchCommandException, GitAlreadyInitializedException, DirectoryExpectedException, IOException,
             BranchAlreadyExistException, HeadFileFailedException, GitNotInitializedException, IndexFileFailedException,
             CanNotDeleteBranchException, BranchDoesNotExistException, InvalidTreeException, InvalidCommitException,
-            NoSuchRevisionException{
+            NoSuchRevisionException, AddFileToIndexFailed{
         if (args.length == 0) {
             throw new NoSuchCommandException("No arguments");
         }
@@ -128,22 +132,42 @@ class ArgsHandler {
                     System.out.println(currentLog.getMessage());
                     currentLog = currentLog.getNextLogMessage();
                 }
+                break;
+            case CLEAN_CMD:
+                manager.cleanRepository();
+                break;
+            case RESET_CMD:
+                if (args.length > 1) {
+                    manager.resetFile(Paths.get(args[1]));
+                    break;
+                }
+                throw new NoSuchCommandException(RESET_CMD + " requires path to file");
+            case STATUS_CMD:
+                StatusManager statusManager = manager.getRepositoryStatus();
+                System.out.println("Revision: " + statusManager.getRevision());
+                for (StatusEntry entry : statusManager.getEntries()) {
+                    System.out.println("\t" + entry.getType() + "\t" + entry.getPath());
+                }
+                break;
             default:
                 break;
         }
     }
 
     /**Prints help to console.*/
-    private static void printHelp() {
+    void printHelp() {
         System.out.println("usage:" + "\n\t" +
-                INIT_CMD + "[<path>]" + "\n\t" +
-                ADD_CMD + "<path>" + "\n\t" +
-                REMOVE_CMD + "<path>" + "\n\t" +
-                COMMIT_CMD + "<message>" + "\n\t" +
-                BRANCH_CMD + "<name>" + "\n\t" +
-                BRANCH_CMD + "-d <name>" + "\n\t" +
-                MERGE_CMD + "<name>" + "\n\t" +
+                INIT_CMD + " <path>" + "\n\t" +
+                ADD_CMD + " <path>" + "\n\t" +
+                REMOVE_CMD + " <path>" + "\n\t" +
+                COMMIT_CMD + " <message>" + "\n\t" +
+                BRANCH_CMD + " <name>" + "\n\t" +
+                BRANCH_CMD + " -d <name>" + "\n\t" +
+                MERGE_CMD + " <name>" + "\n\t" +
                 LOG_CMD + "\n\t" +
+                STATUS_CMD + "\n\t" +
+                RESET_CMD + " <path>" + "\n\t" +
+                CLEAN_CMD + "\n\t" +
                 HELP_CMD);
     }
 

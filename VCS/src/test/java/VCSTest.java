@@ -1,12 +1,16 @@
 import static org.junit.Assert.*;
 
+import com.google.common.collect.ImmutableSet;
 import exceptions.CanNotDeleteBranchException;
+import git_objects.StatusEntry;
+import git_objects.StatusType;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import repository.Manager;
 import repository.Repository;
+import repository.StatusManager;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -17,13 +21,14 @@ public class VCSTest {
     private Path repositoryPath = Paths.get("JavaTest");
     private Path file1 = new File(repositoryPath.toString() + "/file1").toPath();
     private Manager manager;
+
     @Before
     public void initRepository() throws Exception {
         Files.createDirectory(repositoryPath);
         Manager.init(repositoryPath);
         manager = new Manager(repositoryPath);
     }
-    
+
     @Test
     public void simpleAddTest() throws Exception {
         Files.createDirectory(repositoryPath.resolve("dir1"));
@@ -179,8 +184,82 @@ public class VCSTest {
         System.out.println(manager.currentBranch());
     }
 
+    @Test
+    public void getRepositoryStatusTest() throws Exception {
+        byte[] content1 = "testContent1".getBytes();
+        Files.write(file1, content1);
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        Path file2 = new File(repositoryPath.toString() + "/file2").toPath();
+        byte[] content2 = "testContent1".getBytes();
+        Files.write(file2, content2);
+
+        StatusManager status = manager.getRepositoryStatus();
+        assertEquals(status.getRevision(), Repository.DEFAULT_BRANCH_NAME);
+        assertEquals(status.getEntries(),
+                ImmutableSet.of(new StatusEntry(repositoryPath.relativize(file2), StatusType.UNTRACKED)));
+
+        manager.addToIndex(file2);
+
+        status = manager.getRepositoryStatus();
+        assertEquals(status.getEntries(),
+                ImmutableSet.of(new StatusEntry(repositoryPath.relativize(file2), StatusType.ADDED)));
+
+        Files.write(file1, new byte[0]);
+
+        status = manager.getRepositoryStatus();
+        assertEquals(status.getEntries(),
+                ImmutableSet.of(new StatusEntry(repositoryPath.relativize(file2), StatusType.ADDED),
+                        new StatusEntry(repositoryPath.relativize(file1), StatusType.UNSTAGED)));
+
+        manager.addToIndex(file1);
+        manager.commit("second commit", null);
+        Files.write(file1, content1);
+        manager.addToIndex(file1);
+        manager.removeFromIndex(file2);
+
+        status = manager.getRepositoryStatus();
+        assertEquals(status.getEntries(),
+                ImmutableSet.of(new StatusEntry(repositoryPath.relativize(file2), StatusType.REMOVED),
+                        new StatusEntry(repositoryPath.relativize(file1), StatusType.MODIFIED)));
+
+        manager.commit("third commit", null);
+        Files.delete(file1);
+
+        status = manager.getRepositoryStatus();
+        assertEquals(status.getEntries(),
+                ImmutableSet.of(new StatusEntry(repositoryPath.relativize(file1), StatusType.MISSING)));
+    }
+
+    @Test
+    public void cleanRepositoryTest() throws Exception {
+        byte[] content1 = "testContent1".getBytes();
+        Files.write(file1, content1);
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+        Path file2 = new File(repositoryPath.toString() + "/file2").toPath();
+        byte[] content2 = "testContent1".getBytes();
+        Files.write(file2, content2);
+        manager.cleanRepository();
+        assertFalse(file2.toFile().exists());
+    }
+
+    @Test
+    public void resetFileTest() throws Exception {
+        byte[] content1 = "testContent1".getBytes();
+        Files.write(file1, content1);
+        manager.addToIndex(file1);
+        manager.commit("test commit message", null);
+
+        byte[] content2 = "testContent2".getBytes();
+        Files.write(file1, content2);
+        manager.resetFile(file1);
+        byte[] check = Files.readAllBytes(file1);
+        assertArrayEquals(check, content1);
+    }
+
     @After
-    public void removeRepositoryTest() throws Exception {
+    public void removeRepository() throws Exception {
         manager.removeRepository();
         FileUtils.deleteDirectory(repositoryPath.toFile());
     }
